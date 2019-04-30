@@ -20,7 +20,7 @@ library(geosphere)
 library(geoR)
 library(ggplot2)
 library(gstat)
-
+library(raster)
 
 ## finding a distribution for phlorotanin mean
 hist(data$Mean)
@@ -44,15 +44,27 @@ data <- data[!is.na(data$BO2_tempmean_bdmin),]
 xy <- data[,c("dec_lon_new", "dec_lat_new")]
 
 temp <- raster("../data/tif/BO2_tempmean_bdmin_lonlat.tif")
+bath <- raster("../data/tif/BO_bathymean_lonlat.tif")
 
 # visualisation of the data points
 plot(temp)
+points(xy)
+
+plot(bath)
 points(xy)
 
 head(data)
 
 # temp vs phlorotanin concentration
 ggplot(data=data, aes(x=BO2_tempmean_bdmin, y=Mean, color=Ocean)) +
+  labs(x="Mean temperature at min depth", y="Phlorotannins concentration") +
+  geom_point() + 
+  facet_grid(.~Ocean) +
+  geom_smooth(method='lm') + 
+  theme_classic()
+
+
+ggplot(data=data, aes(x=BO_bathymean, y=Mean, color=Ocean)) +
   labs(x="Mean temperature at min depth", y="Phlorotannins concentration") +
   geom_point() + 
   facet_grid(.~Ocean) +
@@ -66,17 +78,12 @@ dist.xy <- distm(xy, fun = distHaversine)
 
 summary(dist.xy[dist.xy!=0])
 
-
-# variogram for phlorotannin concentration
-variog(coords=xy, data=data)
-
 # we have several sites with distance < 20 km, so we will use a model to take into account spatial autocorrelation
 table(dist.xy<20000)
 
 # checking autocorrelation in residuals
 m01 <- lme(Mean ~ BO_bathymean * BO2_tempmean_bdmin, 
              random=list(~ 1|site, ~1|species_name, ~1|Ocean), data=data)
-
 
 data$res <-as.numeric(residuals(m01))
 E <- data$res

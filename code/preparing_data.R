@@ -122,5 +122,3 @@ head(data.env)
 #### exporting table for analysis
 write.table(data.env, "../data/data.csv", sep = ',', 
             row.names = FALSE, col.names=TRUE, dec=".")
-
-head()
