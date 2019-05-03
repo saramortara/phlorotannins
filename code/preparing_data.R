@@ -12,7 +12,7 @@ library(raster)
 # reading data
 data <- read.csv("../data/global_table.csv", sep=";", as.is=TRUE, fill=TRUE, encoding = "UTF-8")[,-10]
 
-head(data)
+head(data)he
 
 # cleaning coordinates columns
 data$dec_lat <- gsub('N', '', data$Latitude)
@@ -69,9 +69,7 @@ data$epithet <- sapply(str_split(data$Species, "( )"), function(x) x[2])
 data$species_name <- paste(data$genus, data$epithet, sep="_")
 head(data)
 
-
 # creating id column
-
 data$site.id <- paste(data$dec_lon_new, data$dec_lat_new, sep='_')
 head(data)
 
@@ -86,38 +84,60 @@ head(data.site)
 # getting environmental variables
 df <- list_layers()
 mar <- df[df$marine==TRUE,]
+unique(mar$name)
+
+head(mar)
 
 # mar$layer_code
 # mar$name
 
+
+
 # creating object with names of environmental variables
 var.names <- c("Bathymetry (mean)",   "Sea water temperature (mean at max depth)" , 
                "Sea water temperature (mean at mean depth)" ,  "Sea water temperature (mean at min depth)", 
-               "Sea surface temperature (mean)", "Primary production (mean)",  "Carbon phytoplankton biomass (mean at max depth)", 
-               "Carbon phytoplankton biomass (mean at mean depth)", "Carbon phytoplankton biomass (mean at min depth)")    
+               "Sea surface temperature (mean)", "Primary production (mean)",  
+               "Carbon phytoplankton biomass (mean at max depth)", "Carbon phytoplankton biomass (mean at mean depth)", 
+               "Carbon phytoplankton biomass (mean at min depth)", "Photosynthetically available radiation (maximum)",  
+               "Bathymetry (minimum)", "Bathymetry (maximum)", 
+               "Bathymetric slope",  "Sea surface temperature (variance)", "Light at bottom (maximum at min depth)", 
+               "Sea water temperature (maximum at min depth)",  "Sea water temperature (minimum at min depth)", 
+               "Sea water temperature (range at min depth)", "Sea surface temperature (longterm max)", 
+               "Primary production (maximum)", "Nitrate concentration (minimum)")    
 
-
-var.code <- mar$layer_code[mar$name%in%var.names]
+var.code <- mar[mar$name%in%var.names, c('layer_code', 'name')]
 var.code
 
 # Download environmental data layers in var.code object
-env.layers <- lapply(var.code, load_layers, equalarea=FALSE, rasterstack=TRUE, datadir="../data/tif/")
+env.layers <- lapply(var.code$layer_code, load_layers, equalarea=FALSE, rasterstack=TRUE, datadir="../data/tif/")
 
 #env.layers <- load_layers(layercodes = var.code, 
 #                           equalarea=FALSE, rasterstack=TRUE, datadir="../data/tif/") 
 
 # creating object with environmental variables for each coordinate
 env <- matrix(NA, ncol=length(env.layers), nrow=nrow(data))
-colnames(env) <- var.code
+colnames(env) <- var.code$layer_code
 for(i in 1:length(env.layers)){
 env[,i] <- extract(env.layers[[i]], data[,c("dec_lon_new", "dec_lat_new")])
 }
 
 head(env)
 
+colnames(env)
+
 data.env <- cbind(data.site, env)
 
 head(data.env)
+
+names(data.env)[2] <- "Ocean"
+data.env$flor <- log(data.env$Mean+0.01)
+
+ggplot(data=data.env, aes(x=BO2_tempmin_bdmin, y=flor, color=Ocean)) +
+  labs(y="Phlorotannins concentration") +
+  geom_point() + 
+  facet_grid(.~Ocean) +
+  #geom_smooth(method='lm') + 
+  theme_classic()
 
 #### exporting table for analysis
 write.table(data.env, "../data/data.csv", sep = ',', 

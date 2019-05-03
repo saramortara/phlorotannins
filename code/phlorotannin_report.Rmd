@@ -1,0 +1,24 @@
+---
+title: "Global effect of temperature on concentration of phlorotannin"
+author: "Sara Mortara"
+date: "3 de maio de 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Goal and hypothesis
+
+Our main goal is to understand how sea temperature affects the production of phlorotannin by brown algae. Our general hypothesis is that temperature affects negativelly phlorotannin concentration. 
+
+## Data set
+
+We collected data from peer reviwed articles that evaluated phlorotannin concentration produced by different species of brown algae. We considered each observation as the concentration of phlorotannin produced by a particular species. From 59 references (Table 1) we evaluated a total of 528 studies. From each study, we extracted values of mean phlorotannin concentration, algae species and geographic coordinates.
+
+At each study locality we extracted from Bio-Oracle (Tyberghein et al. 2012, Assis et al. 2017) the following environmental variables: bathymetry slope and sea water temperature at minimum depth (mean, minimum, maximum and range). Although we are interested in the effect of temperature on phlorotannin concentration, we included bathymetry slope in the models as a covariate. Because mean temperature was highly correlated with other temperature variables, it was excluded from the analysis.
+
+## Statistical analysis
+
+In order to test our hypothesis we built linear mixed models (LMMs) with spatial autocorrelated random effects. We considered observed mean values of phlorotannin concentration (log-transformed) in different spatial locations as our response variable. We incorporated algae species and study sites as random effects in the models given that observations are nested in species and sites. We built all possible models with each temperature variable alone and its additive and interactive combinations with bathymetry slope and a null model. Then, we compared all models simoutaneosly by model selection based on Akaike Information Creterion (AIC). 
