@@ -12,7 +12,7 @@ library(raster)
 # reading data
 data <- read.csv("../data/global_table.csv", sep=";", as.is=TRUE, fill=TRUE, encoding = "UTF-8")[,-10]
 
-head(data)he
+head(data)
 
 # cleaning coordinates columns
 data$dec_lat <- gsub('N', '', data$Latitude)

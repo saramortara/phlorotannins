@@ -37,6 +37,82 @@ my.models <- function(data, var){
   return(m.list)
 }
 
+my.models2 <- function(data, var){
+  data$y <- data[,var]
+  data <- data[data$y>0,]
+  mod.nomes <- c("Temp*Ocean", "Temp+Ocean", "Temp", "Ocean", "Null")
+  message(paste("running", mod.nomes[1], "..."))
+  m01 <- fitme(y ~ tempmax*Ocean +
+                 (1|Order) + (1|species_name) + (1|Reference) +
+                 Matern(1|dec_lon_new + dec_lat_new),
+               family=Gamma(log),
+               data=data)
+  message(paste("running", mod.nomes[2]), "...")
+  m02 <- fitme(y ~  tempmax+Ocean +
+                 (1|Order) + (1|species_name) + (1|Reference) +
+                 Matern(1|dec_lon_new + dec_lat_new),
+               family=Gamma(log),
+               data=data)
+  message(paste("running", mod.nomes[3]), "...")
+  m03 <- fitme(y ~ tempmax +
+                 (1|Order) + (1|species_name) + (1|Reference) +
+                 Matern(1|dec_lon_new + dec_lat_new),
+               family=Gamma(log),
+               data=data)
+  message(paste("running", mod.nomes[4]), "...")
+  m04 <- fitme(y ~  Ocean +
+                 (1|Order) + (1|species_name)  + (1|Reference) +
+                 Matern(1|dec_lon_new + dec_lat_new),
+               family=Gamma(log),
+               data=data)
+  message(paste("running", mod.nomes[5]), "!")
+  m.null <- fitme(y ~  1 + (1|species_name) + (1|Reference) +
+                    (1|Order) + Matern(1|dec_lon_new + dec_lat_new),
+                  family=Gamma(log),
+                  data=data)
+  m.list <- list(m01, m02, m03, m04, m.null)
+  names(m.list) <- mod.nomes
+  return(m.list)
+}
+
+my.models.or <- function(data, var){
+  data$y <- data[,var]
+  data <- data[data$y>0,]
+  mod.nomes <- c("Temp*Ocean", "Temp+Ocean", "Temp", "Ocean", "Null")
+  message(paste("running", mod.nomes[1], "..."))
+  m01 <- fitme(y ~ tempmax*Ocean + Order +
+                 (1|species_name) + (1|Reference) +
+                 Matern(1|dec_lon_new + dec_lat_new),
+               family=Gamma(log),
+               data=data)
+  message(paste("running", mod.nomes[2]), "...")
+  m02 <- fitme(y ~  tempmax+Ocean + Order +
+                 (1|species_name) + (1|Reference) +
+                 Matern(1|dec_lon_new + dec_lat_new),
+               family=Gamma(log),
+               data=data)
+  message(paste("running", mod.nomes[3]), "...")
+  m03 <- fitme(y ~ tempmax + Order +
+                 (1|species_name) + (1|Reference) +
+                 Matern(1|dec_lon_new + dec_lat_new),
+               family=Gamma(log),
+               data=data)
+  message(paste("running", mod.nomes[4]), "...")
+  m04 <- fitme(y ~  Ocean + Order +
+                 (1|species_name)  + (1|Reference) +
+                 Matern(1|dec_lon_new + dec_lat_new),
+               family=Gamma(log),
+               data=data)
+  message(paste("running", mod.nomes[5]), "!")
+  m.null <- fitme(y ~  1 + (1|species_name) + (1|Reference) +
+                    Matern(1|dec_lon_new + dec_lat_new),
+                  family=Gamma(log),
+                  data=data)
+  m.list <- list(m01, m02, m03, m04, m.null)
+  names(m.list) <- mod.nomes
+  return(m.list)
+}
+
 #### function to calculate AIC
 my.aic <- function(m.list, or){
   AIC.list <- lapply(m.list, extractAIC)
@@ -50,5 +126,62 @@ my.aic <- function(m.list, or){
   aic.tab <- AIC.vals[order(AIC.vals$dAIC),c("Order", "Model", "dAIC", "df", "Weights", "AIC")]
   row.names(aic.tab) <- NULL
   return(aic.tab)
+}
+
+# Create raster from predictors
+CreateRaster <- function(
+  long,
+  lat,
+  values,
+  proj="+proj=longlat +datum=WGS84",
+  save.spatial.files=FALSE,
+  filename="data_raster",
+  overwrite.spatial.files=TRUE
+) {
+  # Args:
+  #   long: a vector of the longitudes of the raster cells
+  #   lat: a vector of the latitudes of the raster cells
+  #   values: a vector of the values of the raster cells
+  #   proj: the projection system for the raster
+  #   save.spatial.files: logical indicating if 
+  #          an hard copy of the raster should be saved (as ascii)
+  #   filename: name of the file for the hard copy
+  #   overwrite.spatial.files: logical indicating if 
+  #          an existing hard copy should be overwritten or not
+  #
+  # Returns:
+  #   The raster.
+  #
+  data <- data.frame(long=long, lat=lat, values=values)  # a dataframe 
+  #                 with longitudes, lattitudes, and values is being created
+  coordinates(data) <- ~long+lat  # coordinates are being set for the raster
+  proj4string(data) <- CRS(proj)  # projection is being set for the raster
+  gridded(data) <- TRUE  # a gridded structure is being set for the raster
+  data.raster <- raster(data)  # the raster is being created
+  if(save.spatial.files) writeRaster(
+    data.raster,
+    filename=paste(filename, ".asc", sep=""),
+    overwrite=overwrite.spatial.files
+  )  # if save=TRUE the raster is exported as an ascii file
+  return(data.raster) # the raster is being returned
+}
+
+
+# function to select best model
+best.mod <- function(modlist){
+AIC.list <- lapply(m.list, extractAIC)
+AICvals <- sapply(AIC.list, function(x) x[2])
+best <- modlist[which.min(AICvals)]
+return(best)
+}  
+
+
+
+# function to generate predict table for each model
+pred.table <- function(mod, data){
+int <- get_intervals(mod, re.form=NA)
+pred2 <- predict(mod, re.form=NA)
+pred.table <- data.frame(pred=pred2, lwr=int[,1], upr=int[,2], temp=data$tempmax)
+return(pred.table)
 }
 

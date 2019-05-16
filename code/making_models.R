@@ -4,7 +4,9 @@
 # figures with 
 # https://kimura.univ-montp2.fr/~rousset/spaMM/example_raster.html
 
-# loading packages
+
+
+#### 1. loading packages ####
 library(caret)
 # library(geosphere)
 # library(geoR)
@@ -14,8 +16,12 @@ library(raster)
 library(spaMM)
 library(rgdal)
 library(rasterVis)
+library(dplyr)
+library(vegan)
+library(caret)
+source("functions.R")
 
-# reading data
+##### 2. reading and organizing data ####
 data.raw <- read.csv("../data/data.csv", as.is=TRUE)
 dim(data.raw)
 
@@ -23,9 +29,13 @@ names(data.raw)[2] <- "Ocean"
 
 data <- data.raw[!duplicated(data.raw[,c("species_name", "dec_lon_new", "dec_lat_new", "Mean")]),]
 
+head(data)
 data$SD <- as.numeric(ifelse(data$SD=="n.g.", NA, data$SD))
-
+data$CV <- data$SD/data$Mean
 summary(data$SD)
+summary(data$CV...)
+unique(data$CV)
+summary(data$CV)
 
 head(data)
 
@@ -38,25 +48,54 @@ env <- data[,c("MS_biogeo06_bathy_slope_5m",
                "BO2_lightbotmax_bdmin",
                "BO2_tempmax_bdmin", "BO2_tempmin_bdmin", "BO2_tempmean_bdmin", "BO2_temprange_bdmin")]
 
-names(data)[names(data)%in%names(env)] <- c("slope", "light", "tempmax", "tempmean", "tempmin", "temprange")
-
-data <- data[!is.na(data$tempmax),]
-
-head(data)
-
-# checking distribution for phlorotanin mean
-hist(data$Mean)
-hist(log(data$Mean)) # will fit models with log()
-
-# creting vector with log to use in the models
-data$flor <- log(data$Mean+0.01)
-
-summary(data$flor)
-
 # env.cor <- cor(na.omit(env))
 # env.cor
 # id.cor <- findCorrelation(env.cor)
 
+names(data)[names(data)%in%names(env)] <- c("slope", "light", "tempmax", "tempmean", "tempmin", "temprange")
+
+data <- data[!is.na(data$tempmax),]
+
+# checking distribution for phlorotanin mean
+hist(data$Mean) # will fit models with Gamma family
+hist(data$CV)
+
+summary(data$Mean)
+summary(data$CV)
+
+
+# removing one zero value in data
+data <- data[data$Mean>0,]
+
+# separating data per order
+data.ord <- list()
+ord <- unique(data$Order) 
+
+for(i in 1:length(ord)){
+  data.ord[[i]] <- data[data$Order==ord[i],] 
+}
+
+names(data.ord) <- ord
+
+length(data.ord)
+
+n.ord <- sapply(data.ord, nrow)
+id.ord <- n.ord>7
+
+data.or <- data.ord[id.ord]
+length(data.or)
+
+other <- data.ord[!id.ord] 
+data.ot <- dplyr::bind_rows(other)
+
+head(data.ot)
+
+data.all <- c(data.or, Other=list(data.ot))
+
+names(data.all)
+length(data.all)
+
+##### 3. visualizing data ####
 
 # saving object with raster
 tempmax <- raster("../data/tif/BO2_tempmax_bdmin_lonlat.tif")
@@ -72,133 +111,63 @@ plot(tempmax)
 points(xy)
 
 # temp vs phlorotanin concentration
-ggplot(data=data, aes(x=tempmax, y=flor, color=Ocean)) +
+ggplot(data=data, aes(x=tempmax, y=Mean, color=Order)) +
   labs(x="Mean temperature at min depth", y="Phlorotannins concentration") +
   geom_point() + 
-  facet_grid(.~Ocean) +
+  facet_grid(.~Order) +
   #geom_smooth(method='lm') + 
   theme_classic()
 
 
-ggplot(data=data, aes(x=slope, y=flor, color=Ocean)) +
+ggplot(data=data, aes(x=tempmax, y=CV, color=Order)) +
   labs(x="Mean carbon concentration at min depth", y="Phlorotannins concentration") +
   geom_point() + 
-  facet_grid(.~Ocean) +
+  facet_grid(.~Order) +
   #geom_smooth(method='lm') + 
   theme_classic()
 
-####  Selection of the random structure ####
+#### 4. Fitting models ####
+# excluding NA to run models with CV
+data.cv <- lapply(data.all, na.omit)
 
-# finding the best random structure for models
-m.rand1 <- fitme(flor ~ tempmax*Ocean +
-                  (1|species_name) + (1|site) + (1|Reference) +
-                  Matern(1|dec_lon_new + dec_lat_new),
-                data=data)
+### one order as a test
+m.list <- my.models(data.all[[1]], var="Mean")
+m.list2 <- my.models(data.all[[1]], var="CV")
 
+### 4.1 making models separated per order
+models.mean.or <- list()
+models.cv.or <- list()
+for(i in 1:length(data.all)){
+message(paste("running mean models for", names(data.all)[i]))
+models.mean.or[[i]] <- my.models(data.all[[i]], "Mean")
+#message(paste("running CV models for", names(data.all)[i]))
+#models.cv[[i]] <- my.models(data.cv[[i]], "CV") #using data set without NAs
+}
 
-m.rand2 <- fitme(flor ~ tempmax*Ocean +
-                  (1|species_name) + (1|site) +
-                  Matern(1|dec_lon_new + dec_lat_new),
-                  data=data)
+## aic per order 
+all.aic <- list()
+for(i in 1:length(data.all)){
+  all.aic[[i]] <- my.aic(models.mean.or[[i]], or=names(data.all)[i])
+}
+all.aic <- bind_rows(all.aic)
 
-m.rand3 <- fitme(flor ~ tempmax*Ocean +
-                   (1|species_name) +
-                   Matern(1|dec_lon_new + dec_lat_new),
-                  data=data)
+all.aic
 
-m.rand4 <- fitme(flor ~ tempmax*Ocean +
-                   (1|species_name) + (1|Reference) +
-                   Matern(1|dec_lon_new + dec_lat_new),
-                  data=data)
+### 4.2. All orders together
+## fitting models
+models.cv <- my.models.or(data, "CV")
+models.mean <- my.models.or(data, "Mean")
+## aic table
+my.aic(models.cv, "all")
+my.aic(models.mean, "all")
 
-m.rand5 <- fitme(flor ~ tempmax*Ocean +
-                   (1|Reference) +
-                   Matern(1|dec_lon_new + dec_lat_new),
-                   data=data)
+#AIC.list2 <- lapply(m.list, AIC)
+#AICd.vals <- sapply(AIC.list2, function(x) x[3])
+#AICc.vals <- sapply(AIC.list2, function(x) x[2])
 
-m.rand6 <- fitme(flor ~ tempmax*Ocean +
-                   (1|site) +
-                   Matern(1|dec_lon_new + dec_lat_new),
-                 data=data)
+write.table(all.tab, "aic_tab_mean.csv", row.names=FALSE, col.names=TRUE, sep=",")
 
-m.rand7 <- fitme(flor ~ tempmax*Ocean +
-                   Matern(1|dec_lon_new + dec_lat_new),
-                 data=data)
-
-rand.sel <- list(m.rand1, m.rand2, m.rand3, m.rand4, m.rand5, m.rand6, m.rand7)
-lapply(rand.sel, extractAIC)
-
-### making models
-
-m01 <- fitme(flor ~ tempmax*Ocean +
-               (1|species_name) + (1|Reference) +
-               Matern(1|dec_lon_new + dec_lat_new),
-             data=data)
-m02 <- fitme(flor ~  tempmax+Ocean +
-               (1|species_name) + (1|Reference) +
-               Matern(1|dec_lon_new + dec_lat_new),
-             data=data)
-m03 <- fitme(flor ~ tempmax +
-               (1|species_name) + (1|Reference) +
-               Matern(1|dec_lon_new + dec_lat_new),
-             data=data)
-
-
-m03b <- corrHLfit(flor ~ tempmax +
-               (1|species_name) + (1|Reference) +
-               Matern(1|dec_lon_new + dec_lat_new),
-             data=data, HLmethod="ML")
-
-ci.b <- confint(m03b, "tempmax")
-summary(m03b)
-
-m04 <- fitme(flor ~  Ocean +
-               (1|species_name)  + (1|Reference) +
-               Matern(1|dec_lon_new + dec_lat_new),
-             data=data)
-m.null <- fitme(flor ~  1 + (1|species_name) + (1|Reference) +
-                  Matern(1|dec_lon_new + dec_lat_new),
-                data=data)
-
-m.list <- list(m01, m02, m03, m04, m.null)
-names(m.list) <- c("m01", "m02", "m03", "m04", "m.null")
-
-AIC.list <- lapply(m.list, extractAIC)
-AIC.list2 <- lapply(m.list, AIC)
-
-AICd.vals <- sapply(AIC.list2, function(x) x[3])
-AICc.vals <- sapply(AIC.list2, function(x) x[2])
-AIC.vals <- data.frame(AIC=sapply(AIC.list, function(x) x[2]))
-
-AIC.vals
-AIC.vals$df <- sapply(AIC.list, function(x) x[1])
-AIC.vals$delta <- AIC.vals$AIC-sort(AIC.vals$AIC)[1]
-
-AIC.vals$model <- c("Temp:ocean + Temp + Ocean", "Temp + Ocean", "Temp", "Ocean", "Null")
-
-AICw <- function(x){ exp(-0.5*x)/sum(exp(-0.5*AIC.vals$delta)) }
-
-AIC.vals$weights <- round(AICw(AIC.vals$delta), 3)
-AIC.vals$weights[AIC.vals$weights==0] <- "<0.001"
-
-aic.tab <- AIC.vals[order(AIC.vals$delta),c("model", "delta", "df", "weights", "AIC")]
-
-write.table(aic.tab, "aic_tab.csv", row.names=FALSE, col.names=TRUE, sep=",")
-
-# AIC from extractAIC function
-sort(AIC.vals)-sort(AIC.vals)[1]
-# dispersal AIC
-sort(AICd.vals)-sort(AICd.vals)[1]
-# conditional AIC
-sort(AICc.vals)-sort(AICc.vals)[1]
-
-LRT(m01, m.null)
-LRT(m02, m.null)
-LRT(m03, m.null)
-LRT(m04, m.null)
-
-summary(m03)
-
+#### 5. Calculating predictors ####
 
 # extracting values from model
 
@@ -214,68 +183,46 @@ temp.pred <- data.frame(tempmax=temp.vals$BO2_tempmax_bdmin_lonlat,
                         dec_lon_new=temp.xy$x, 
                         dec_lat_new=temp.xy$y)
 ## calculating predictors
-pred <- predict(m03, newdata=temp.pred, re.form=~Matern(1|dec_lon_new + dec_lat_new))
+pred <- predict(models.mean$Temp, newdata=temp.pred, re.form=~Matern(1|dec_lon_new + dec_lat_new))
 ## data frame with all cell values
 temp.xy$pred <- NA
 temp.xy$pred[!is.na(temp.xy$BO2_tempmax_bdmin_lonlat)] <- pred
 
 head(temp.xy)
 
-## calculating intervals
-#int <- get_intervals(m03, newdata=temp.pred, re.form=~Matern(1|dec_lon_new + dec_lat_new))
-
-int <- get_intervals(m03, re.form=NA)
-pred2 <- predict(m03, re.form=NA)
-head(int)
-
-pred.table <- data.frame(pred=pred2, lwr=int[,1], upr=int[,2], temp=data$tempmax)
-head(pred.table)
-
 ## create raster from predictors 
-
-CreateRaster <- function(
-  long,
-  lat,
-  values,
-  proj="+proj=longlat +datum=WGS84",
-  save.spatial.files=FALSE,
-  filename="data_raster",
-  overwrite.spatial.files=TRUE
-) {
-  # Args:
-  #   long: a vector of the longitudes of the raster cells
-  #   lat: a vector of the latitudes of the raster cells
-  #   values: a vector of the values of the raster cells
-  #   proj: the projection system for the raster
-  #   save.spatial.files: logical indicating if 
-  #          an hard copy of the raster should be saved (as ascii)
-  #   filename: name of the file for the hard copy
-  #   overwrite.spatial.files: logical indicating if 
-  #          an existing hard copy should be overwritten or not
-  #
-  # Returns:
-  #   The raster.
-  #
-  data <- data.frame(long=long, lat=lat, values=values)  # a dataframe 
-  #                 with longitudes, lattitudes, and values is being created
-  coordinates(data) <- ~long+lat  # coordinates are being set for the raster
-  proj4string(data) <- CRS(proj)  # projection is being set for the raster
-  gridded(data) <- TRUE  # a gridded structure is being set for the raster
-  data.raster <- raster(data)  # the raster is being created
-  if(save.spatial.files) writeRaster(
-    data.raster,
-    filename=paste(filename, ".asc", sep=""),
-    overwrite=overwrite.spatial.files
-  )  # if save=TRUE the raster is exported as an ascii file
-  return(data.raster) # the raster is being returned
-}
-
 raster.predict <- CreateRaster(long=temp.xy$x, 
                                lat=temp.xy$y,
                                values=exp(temp.xy$pred), 
                                save.spatial.files = TRUE,
                                filename = "phlorotannin_predict")
-### making map 
+
+#### 6. Making plots ####
+
+### 6.2 making plot
+
+## calculating predict and intervals 
+best.mean <- lapply(models.mean.or, best.mod) 
+pred.mean <- list()
+for(i in 1:length(data.all)){
+pred.mean[[i]] <- pred.table(best.mean[[i]], data.all[[i]])
+}
+
+head(temp.xy)
+
+png("temp_vs_phlor.png", res = 300, width=1500, height = 1200)
+ggplot(data=data, aes(x=tempmax, y=Mean)) +
+  labs(x="Maximum temperature at min depth (°C)", y="Phlorotannin concentration (Log)") +
+  geom_point(alpha=0.7) + 
+  geom_ribbon(aes(x=temp, y=pred, ymin=lwr, ymax=upr), data=pred.table, alpha=0.1) +
+  facet_grid(.~Ocean) +
+  #geom_smooth(method='lm') + 
+  theme_classic()
+dev.off()
+
+
+
+### 6.1 making map 
 data(worldcountries)
 projection="+proj=longlat +datum=WGS84"
 worldcountries <- spTransform(worldcountries, projection)
@@ -287,31 +234,15 @@ country.layer <- layer(sp.polygons(worldcountries, fill=fill),
 
 coordinates(xy) <- ~dec_lon_new+dec_lat_new
 
-palette <- spaMM.colors() #wesanderson::wes_palette("Zissou1", 16, type="continuous")
-myTheme <- rasterTheme(region=paleta)
+palette <- wesanderson::wes_palette("Zissou1", 16, type="continuous")
+myTheme <- rasterTheme(region=palette)
 
 png("predicted_map.png", res=300, width=2100, height=1200)
-levelplot(raster.predict, margin=FALSE,  
-          cuts=length(palette)-1,
-          col.regions=palette) + #, par.settings=myTheme
-#latticeExtra::layer(sp.points(xy,cex=1.3, col=1, pch=1)) +
+levelplot(raster.predict, margin=FALSE)+
+  #cuts=length(palette)-1,
+  #col.regions=palette) + #, par.settings=myTheme
+  #latticeExtra::layer(sp.points(xy,cex=1.3, col=1, pch=1)) +
   country.layer
 dev.off()
 
-summary(m03)
-
-# making plot
-
-head(temp.xy)
-
-png("temp_vs_phlor.png", res = 300, width=1500, height = 1200)
-ggplot(data=data, aes(x=tempmax, y=flor)) +
-  labs(x="Maximum temperature at min depth (°C)", y="Phlorotannin concentration (Log)") +
-  geom_point(alpha=0.7) + 
-  geom_ribbon(aes(x=temp, y=pred, ymin=lwr, ymax=upr), data=pred.table, alpha=0.1) +
-  #facet_grid(.~Ocean) +
-  #geom_smooth(method='lm') + 
-  theme_classic()
-dev.off()
-
-
+summary(models.mean.all$Temp)
