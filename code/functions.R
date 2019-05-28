@@ -169,7 +169,7 @@ CreateRaster <- function(
 
 # function to select best model
 best.mod <- function(modlist){
-AIC.list <- lapply(m.list, extractAIC)
+AIC.list <- lapply(modlist, extractAIC)
 AICvals <- sapply(AIC.list, function(x) x[2])
 best <- modlist[which.min(AICvals)]
 return(best)
