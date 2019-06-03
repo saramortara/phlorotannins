@@ -75,6 +75,8 @@ for(i in 1:length(ord)){
   data.ord[[i]] <- data[data$Order==ord[i],] 
 }
 
+ord
+
 names(data.ord) <- ord
 
 length(data.ord)
@@ -95,6 +97,17 @@ data.all <- c(data.or, Other=list(data.ot))
 names(data.all)
 length(data.all)
 
+
+# creating columns with order
+other_orders <- setdiff(ord, names(data.all))
+
+names(data)
+
+data$Order2 <- ifelse(data$Order%in%other_orders, "Other", data$Order)
+
+table(data$Order2)
+table(data$Order)
+
 ##### 3. visualizing data ####
 
 # saving object with raster
@@ -111,20 +124,40 @@ plot(tempmax)
 points(xy)
 
 # temp vs phlorotanin concentration
-ggplot(data=data, aes(x=tempmax, y=Mean, color=Order)) +
+ggplot(data=data, aes(x=tempmax, y=Mean, color=Order2)) +
   labs(x="Mean temperature at min depth", y="Phlorotannins concentration") +
   geom_point() + 
-  facet_grid(.~Order) +
+  facet_grid(.~Order2) +
   #geom_smooth(method='lm') + 
   theme_classic()
 
 
-ggplot(data=data, aes(x=tempmax, y=CV, color=Order)) +
+ggplot(data=data, aes(x=tempmax, y=CV, color=Order2)) +
   labs(x="Mean carbon concentration at min depth", y="Phlorotannins concentration") +
   geom_point() + 
-  facet_grid(.~Order) +
+  facet_grid(.~Order2) +
   #geom_smooth(method='lm') + 
   theme_classic()
+
+# boxplot
+# temp vs phlorotanin concentration
+ggplot(data=data, aes(x=Ocean, y=Mean, fill=Order2)) +
+  labs(x="Ocean", y="Phlorotannins concentration") +
+  geom_boxplot() + 
+  #facet_grid(.~Order2 + Ocean) +
+  #geom_smooth(method='lm') + 
+  theme_classic()
+
+ggplot(data=data, aes(x=Order2, y=Mean, fill=Order2)) +
+  labs(x="Order", y="Phlorotannins concentration") +
+  geom_boxplot() + 
+  theme_classic()
+
+ggplot(data=data, aes(x=Ocean, y=Mean)) +
+  labs(x="Ocean", y="Phlorotannins concentration") +
+  geom_boxplot() + 
+  theme_classic()
+
 
 #### 4. Fitting models ####
 # excluding NA to run models with CV

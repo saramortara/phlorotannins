@@ -12,9 +12,15 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+## Theoretical background
+
+- Understanding macroecological patterns of brown algae is still a challenge.  
+
+
+
 ## Goal and hypothesis
 
-Our main goal is to understand how sea temperature affects the production of phlorotannin by brown algae in different ocean regions across the globe. We confronted three  hypotheses on how temperature afeccts phlorotannin concentration. 
+Our main goal is to understand how sea temperature affects the production of phlorotannin by brown algae in different ocean regions across the globe. We confronted three hypotheses on how temperature afeccts phlorotannin concentration. 
 
 ## Methods
 
