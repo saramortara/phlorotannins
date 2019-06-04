@@ -1,38 +1,45 @@
 ## function to operform model selection
-my.models <- function(data, var){
-  data$y <- data[,var]
+my.models <- function(data, var.y, var.t){
+  data$y <- data[,var.y]
+  data$temp <- data[,var.t]
   data <- data[data$y>0,]
-  mod.nomes <- c("Temp*Ocean", "Temp+Ocean", "Temp", "Ocean", "Null")
+  mod.nomes <- c("Temp", "Temp+Ocean", "Sal+PAR", "Temp+Ocean+Sal+PAR","Temp+Sal+PAR", "Null")
   message(paste("running", mod.nomes[1], "..."))
-  m01 <- fitme(y ~ tempmax*Ocean +
+  m00 <- fitme(y ~ temp +
                  (1|species_name) + (1|Reference) +
                  Matern(1|dec_lon_new + dec_lat_new),
                family=Gamma(log),
                data=data)
-  message(paste("running", mod.nomes[2]), "...")
-  m02 <- fitme(y ~  tempmax+Ocean +
+  message(paste("running", mod.nomes[2], "..."))
+  m01 <- fitme(y ~ temp+Ocean +
                  (1|species_name) + (1|Reference) +
                  Matern(1|dec_lon_new + dec_lat_new),
                family=Gamma(log),
                data=data)
   message(paste("running", mod.nomes[3]), "...")
-  m03 <- fitme(y ~ tempmax +
+  m02 <- fitme(y ~  salinity+PARmax +
                  (1|species_name) + (1|Reference) +
                  Matern(1|dec_lon_new + dec_lat_new),
                family=Gamma(log),
                data=data)
   message(paste("running", mod.nomes[4]), "...")
-  m04 <- fitme(y ~  Ocean +
-                 (1|species_name)  + (1|Reference) +
+  m03 <- fitme(y ~ temp + Ocean+salinity+PARmax +
+                 (1|species_name) + (1|Reference) +
                  Matern(1|dec_lon_new + dec_lat_new),
                family=Gamma(log),
                data=data)
-  message(paste("running", mod.nomes[5]), "!")
+  message(paste("running", mod.nomes[5]), "...")
+  m04 <- fitme(y ~ temp+salinity+PARmax +
+                 (1|species_name) + (1|Reference) +
+                 Matern(1|dec_lon_new + dec_lat_new),
+               family=Gamma(log),
+               data=data)
+  message(paste("running", mod.nomes[6]), "!")
   m.null <- fitme(y ~  1 + (1|species_name) + (1|Reference) +
                     Matern(1|dec_lon_new + dec_lat_new),
                   family=Gamma(log),
                   data=data)
-  m.list <- list(m01, m02, m03, m04, m.null)
+  m.list <- list(m00, m01, m02, m03, m04, m.null)
   names(m.list) <- mod.nomes
   return(m.list)
 }

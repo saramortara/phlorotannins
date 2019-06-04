@@ -1,5 +1,5 @@
 ---
-title: "Global effect of temperature on phlorotannin concentration"
+title: "Global effect of biogeography and environmental gradients on the concentration of secondary compounds from brown seaweeds"
 author: ''
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
@@ -12,15 +12,15 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Theoretical background
+## Introduction
 
-- Understanding macroecological patterns of brown algae is still a challenge.  
+Understanding brown seaweed macroecological patterns remains a challenge. Many macroecological patterns are yet to be described and there is still a lack of mechanistic explanations for the few known patterns. For instance, evidence suggests that there is a peak of brown algae diversity in higher latitudes. Suggested explanations for such patterns rely on biogegraphical and competitive mechanisms. It has been suggested that brown algae evolved and diversified in cooler seas because of temperature tolerance. In addition, because some brown seaweed such as kelps and fucoids are considered successfull competitors in cooler seas, they might exclude green and red algal species what could generate observed patterns of global diversity. 
 
+General patterns of brown seaweeds are also driven by the effect of herbivores. As a protection against grazing, brown seaweeds produce chemical defenses such as phenolic compounds. Because of the global pattern of distribution of brown seaweeds, higher concentrations of phenolic compounds are also found at higher latitudes (Steinberg and Paul 1990; Steinberg et al. 1991). At local scales, environmental gradients of salinity and photosynthetically active radiation are important components driving the pattern of phenolic compounds produced by brown seaweed (Hess et al. 2017).
 
+In this studied we aimed to understand global patterns of phenolic compounds Because of regional and local effects on  
 
-## Goal and hypothesis
-
-Our main goal is to understand how sea temperature affects the production of phlorotannin by brown algae in different ocean regions across the globe. We confronted three hypotheses on how temperature afeccts phlorotannin concentration. 
+Our main goal is to understand how sea temperature affects the production of phenolic compounds by brown seaweed in different ocean regions across the globe. We confronted three hypotheses on how temperature afeccts phlorotannin concentration. 
 
 ## Methods
 
@@ -45,15 +45,15 @@ We found that phlorotannin concentration is negativelly affected by maximum temp
 
 
 ```{r, echo=FALSE}
-aic_tab <- read.csv("aic_tab.csv")
+aic_tab <- read.csv("../results/aic_tab.csv")
 knitr::kable(aic_tab, caption = "Table 1. Model selection results for fixed effects of temperature (Temp), oceanic region (Ocean), and their interaction (Temp:Ocean) based on the random effect structure: random intercept effect of species and random intercept effect of study author. Models were ranked based on differences in Akaike’s information criterion (AIC). k is the number of parameters in the model and w is the Akaike weight of each model.", 
              col.names = c("Model", "$\\Delta$AIC", "k", "w", "AIC"))
 ```
 
 <center>
-![Figure 1. Effect of temperature on phlorotannin concentration.](temp_vs_phlor.png){width=60%}
+![Figure 1. Effect of temperature on phlorotannin concentration.](../results/temp_vs_phlor.png){width=60%}
 </center>
 
 
-![Figure 2. Prediction of phlorotannin concentration at a global scale.](predicted_map.png)
+![Figure 2. Prediction of phlorotannin concentration at a global scale.](../results/predicted_map.png)
 

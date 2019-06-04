@@ -41,18 +41,23 @@ head(data)
 
 data$NS <- ifelse(stringr::str_detect(data$Ocean, "North"), "N", "S")
 
+names(data)
+
 ## removing missing values
 xy <- data[,c("dec_lon_new", "dec_lat_new")]
 
-env <- data[,c("MS_biogeo06_bathy_slope_5m",
-               "BO2_lightbotmax_bdmin",
-               "BO2_tempmax_bdmin", "BO2_tempmin_bdmin", "BO2_tempmean_bdmin", "BO2_temprange_bdmin")]
+env <- data[,c("BO_parmax", "BO_salinity", 
+         "BO2_tempmax_bdmin", "BO2_tempmin_bdmin", "BO2_tempmean_bdmin", "BO2_temprange_bdmin")] 
 
-# env.cor <- cor(na.omit(env))
-# env.cor
-# id.cor <- findCorrelation(env.cor)
+#env <- data[,c("MS_biogeo06_bathy_slope_5m",
+#               "BO2_lightbotmax_bdmin",
+#               "BO2_tempmax_bdmin", "BO2_tempmin_bdmin", "BO2_tempmean_bdmin", "BO2_temprange_bdmin")]
 
-names(data)[names(data)%in%names(env)] <- c("slope", "light", "tempmax", "tempmean", "tempmin", "temprange")
+#env.cor <- cor(na.omit(env))
+#env.cor
+#id.cor <- findCorrelation(env.cor)
+
+names(data)[names(data)%in%names(env)] <- c("PARmax", "salinity", "tempmax", "tempmean", "tempmin", "temprange")
 
 data <- data[!is.na(data$tempmax),]
 
@@ -148,10 +153,13 @@ ggplot(data=data, aes(x=Ocean, y=Mean, fill=Order2)) +
   #geom_smooth(method='lm') + 
   theme_classic()
 
-ggplot(data=data, aes(x=Order2, y=Mean, fill=Order2)) +
+png("../results/concentration_vs_order.png", res=300, 
+    width=1400, height=1200)
+ggplot(data=data, aes(x=Order2, y=Mean)) +
   labs(x="Order", y="Phlorotannins concentration") +
   geom_boxplot() + 
   theme_classic()
+dev.off()
 
 ggplot(data=data, aes(x=Ocean, y=Mean)) +
   labs(x="Ocean", y="Phlorotannins concentration") +
@@ -164,32 +172,41 @@ ggplot(data=data, aes(x=Ocean, y=Mean)) +
 data.cv <- lapply(data.all, na.omit)
 
 ### one order as a test
-m.list <- my.models(data.all[[1]], var="Mean")
-m.list2 <- my.models(data.all[[1]], var="CV")
+m.list <- my.models(data.all[[1]], var.y="Mean", var.t="tempmax")
+m.list2 <- my.models(data.all[[1]], var.y="CV", var.t="temprange")
 
 ### 4.1 making models separated per order
+
+# models for mean
 models.mean.or <- list()
-models.cv.or <- list()
 for(i in 1:length(data.all)){
 message(paste("running mean models for", names(data.all)[i]))
-models.mean.or[[i]] <- my.models(data.all[[i]], "Mean")
+models.mean.or[[i]] <- my.models(data.all[[i]], var.y="Mean", var.t="tempmax")
 #message(paste("running CV models for", names(data.all)[i]))
 #models.cv[[i]] <- my.models(data.cv[[i]], "CV") #using data set without NAs
+}
+
+# models for CV
+models.cv.or <- list()
+for(i in 1:length(data.all)){
+message(paste("running CV models for", names(data.all)[i]))
+models.cv.or[[i]] <- my.models(data.cv[[i]], var.y="CV", var.t="temprange") #using data set without NAs
 }
 
 ## aic per order 
 all.aic <- list()
 for(i in 1:length(data.all)){
   all.aic[[i]] <- my.aic(models.mean.or[[i]], or=names(data.all)[i])
-}
+ # all.aic.cv[[i]] <- my.aic(models.cv.or[[i]], or=names(data.all)[i])
+  }
 all.aic <- bind_rows(all.aic)
 
 all.aic
 
 ### 4.2. All orders together
 ## fitting models
-models.cv <- my.models.or(data, "CV")
-models.mean <- my.models.or(data, "Mean")
+models.cv <- my.models(data, "CV", "temprange")
+models.mean <- my.models(data, "Mean", "tempmax")
 ## aic table
 my.aic(models.cv, "all")
 my.aic(models.mean, "all")

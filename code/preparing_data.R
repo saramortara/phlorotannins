@@ -91,8 +91,6 @@ head(mar)
 # mar$layer_code
 # mar$name
 
-
-
 # creating object with names of environmental variables
 var.names <- c("Bathymetry (mean)",   "Sea water temperature (mean at max depth)" , 
                "Sea water temperature (mean at mean depth)" ,  "Sea water temperature (mean at min depth)", 
@@ -103,7 +101,7 @@ var.names <- c("Bathymetry (mean)",   "Sea water temperature (mean at max depth)
                "Bathymetric slope",  "Sea surface temperature (variance)", "Light at bottom (maximum at min depth)", 
                "Sea water temperature (maximum at min depth)",  "Sea water temperature (minimum at min depth)", 
                "Sea water temperature (range at min depth)", "Sea surface temperature (longterm max)", 
-               "Primary production (maximum)", "Nitrate concentration (minimum)")    
+               "Primary production (maximum)", "Nitrate concentration (minimum)", "Salinity")    
 
 var.code <- mar[mar$name%in%var.names, c('layer_code', 'name')]
 var.code
