@@ -155,10 +155,19 @@ ggplot(data=data, aes(x=Ocean, y=Mean, fill=Order2)) +
 
 png("../results/concentration_vs_order.png", res=300, 
     width=1400, height=1200)
+
+
+data$Order2 <- as.factor(data$Order2)
+
+my_xlab <- paste(levels(data$Order2),"\n(N=",table(data$Order2),")",sep="")
+
 ggplot(data=data, aes(x=Order2, y=Mean)) +
   labs(x="Order", y="Phlorotannins concentration") +
-  geom_boxplot() + 
-  theme_classic()
+  geom_boxplot(varwidth=TRUE) + 
+  theme_classic() +
+  scale_x_discrete(labels=my_xlab) +
+  scale_y_log10()
+
 dev.off()
 
 ggplot(data=data, aes(x=Ocean, y=Mean)) +
@@ -193,6 +202,8 @@ message(paste("running CV models for", names(data.all)[i]))
 models.cv.or[[i]] <- my.models(data.cv[[i]], var.y="CV", var.t="temprange") #using data set without NAs
 }
 
+models.cv.or
+
 ## aic per order 
 all.aic <- list()
 for(i in 1:length(data.all)){
@@ -201,12 +212,19 @@ for(i in 1:length(data.all)){
   }
 all.aic <- bind_rows(all.aic)
 
-all.aic
+all.aic.cv <- list()
+for(i in 1:3){
+  all.aic.cv[[i]] <- my.aic(models.cv.or[[i]], or=names(data.all)[i])
+  # all.aic.cv[[i]] <- my.aic(models.cv.or[[i]], or=names(data.all)[i])
+}
+
+
+all.aic.cv
 
 ### 4.2. All orders together
 ## fitting models
-models.cv <- my.models(data, "CV", "temprange")
-models.mean <- my.models(data, "Mean", "tempmax")
+models.cv <- my.models.all(data, "CV", "temprange")
+models.mean <- my.models.all(data, "Mean", "tempmax")
 ## aic table
 my.aic(models.cv, "all")
 my.aic(models.mean, "all")
@@ -215,7 +233,7 @@ my.aic(models.mean, "all")
 #AICd.vals <- sapply(AIC.list2, function(x) x[3])
 #AICc.vals <- sapply(AIC.list2, function(x) x[2])
 
-write.table(all.tab, "aic_tab_mean.csv", row.names=FALSE, col.names=TRUE, sep=",")
+#write.table(all.tab, "../results/aic_tab_mean.csv", row.names=FALSE, col.names=TRUE, sep=",")
 
 #### 5. Calculating predictors ####
 
@@ -296,3 +314,22 @@ levelplot(raster.predict, margin=FALSE)+
 dev.off()
 
 summary(models.mean.all$Temp)
+
+
+
+#### exporting S1 table
+
+head(data)
+
+stable <- data[,c("Ocean", "dec_lon_new", "dec_lat_new", 'species_name', "Order", "Mean", "CV", "Reference")]
+
+stable$species_name <- gsub("_", " ", stable$species_name)
+
+names(stable)[2:4] <- c("Longitude", "Latitude", "Scientific name")
+
+head(stable)
+dim(stable)
+
+write.table(stable, "../results/S_table_01.csv", sep=",", 
+            col.names = TRUE, 
+            row.names=FALSE)
