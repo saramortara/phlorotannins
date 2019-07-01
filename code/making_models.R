@@ -130,7 +130,7 @@ points(xy)
 
 # temp vs phlorotanin concentration
 ggplot(data=data, aes(x=tempmax, y=Mean, color=Order2)) +
-  labs(x="Mean temperature at min depth", y="Phlorotannins concentration") +
+  labs(x="Maximum temperature at min depth", y="Phlorotannins concentration") +
   geom_point() + 
   facet_grid(.~Order2) +
   #geom_smooth(method='lm') + 
@@ -202,7 +202,13 @@ message(paste("running CV models for", names(data.all)[i]))
 models.cv.or[[i]] <- my.models(data.cv[[i]], var.y="CV", var.t="temprange") #using data set without NAs
 }
 
-models.cv.or
+models.cv.or2 <- list()
+for(i in 1:length(data.all)){
+  message(paste("running CV models for", names(data.all)[i]))
+  models.cv.or2[[i]] <- my.models(data.cv[[i]], var.y="CV", var.t="tempmax") #using data set without NAs
+}
+
+models.cv.or2
 
 ## aic per order 
 all.aic <- list()
@@ -219,9 +225,37 @@ for(i in 1:3){
 }
 
 
-all.aic.cv
+all.aic.cv <- bind_rows(all.aic.cv)
+
+best.aic <- all.aic[all.aic$dAIC<2,]
+best.aic.cv <- all.aic.cv[all.aic.cv$dAIC<2,]
+
+best.aic
 
 ### 4.2. All orders together
+
+
+m.full <- fitme(Mean ~ tempmax * Ocean + Order2 +
+                  (1|species_name) + (1|Reference) +
+                  Matern(1|dec_lon_new + dec_lat_new),
+                  family=Gamma(log),
+                  data=data)
+
+m.01 <- fitme(Mean ~ tempmax * Ocean + Order2 +
+                  (1|species_name) + (1|Reference) +
+                  Matern(1|dec_lon_new + dec_lat_new),
+                family=Gamma(log),
+                data=data)
+
+m.null <- fitme(Mean ~ 1 + 
+                  (1|species_name) + (1|Reference) +
+                  Matern(1|dec_lon_new + dec_lat_new),
+                 family=Gamma(log),
+                 data=data)
+
+extractAIC(m.full)
+extractAIC(m.null)
+
 ## fitting models
 models.cv <- my.models.all(data, "CV", "temprange")
 models.mean <- my.models.all(data, "Mean", "tempmax")
