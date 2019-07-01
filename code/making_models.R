@@ -146,27 +146,35 @@ ggplot(data=data, aes(x=tempmax, y=CV, color=Order2)) +
 
 # boxplot
 # temp vs phlorotanin concentration
-ggplot(data=data, aes(x=Ocean, y=Mean, fill=Order2)) +
-  labs(x="Ocean", y="Phlorotannins concentration") +
+ggplot(data=data, aes(x=Order2, y=Mean, fill=Ocean)) +
+  labs(x="Order", y="Phlorotannins concentration") +
   geom_boxplot() + 
   #facet_grid(.~Order2 + Ocean) +
   #geom_smooth(method='lm') + 
   theme_classic()
 
-png("../results/concentration_vs_order.png", res=300, 
-    width=1400, height=1200)
-
-
 data$Order2 <- as.factor(data$Order2)
-
 my_xlab <- paste(levels(data$Order2),"\n(N=",table(data$Order2),")",sep="")
 
-ggplot(data=data, aes(x=Order2, y=Mean)) +
+p_mean <- ggplot(data=data, aes(x=Order2, y=Mean)) +
   labs(x="Order", y="Phlorotannins concentration") +
   geom_boxplot(varwidth=TRUE) + 
   theme_classic() +
   scale_x_discrete(labels=my_xlab) +
   scale_y_log10()
+
+p_cv <- ggplot(data=data, aes(x=Order2, y=CV)) +
+  labs(x="Order", y="Phlorotannins concentration") +
+  geom_boxplot(varwidth=TRUE) + 
+  theme_classic() +
+  scale_x_discrete(labels=my_xlab) +
+  scale_y_log10()
+
+png("../results/concentration_vs_order.png", res=300, 
+    width=1400, height=1200)
+
+
+
 
 dev.off()
 
@@ -231,9 +239,9 @@ best.aic <- all.aic[all.aic$dAIC<2,]
 best.aic.cv <- all.aic.cv[all.aic.cv$dAIC<2,]
 
 best.aic
+best.aic.cv
 
 ### 4.2. All orders together
-
 
 m.full <- fitme(Mean ~ tempmax * Ocean + Order2 +
                   (1|species_name) + (1|Reference) +
@@ -278,19 +286,32 @@ temp.xy <- rasterToPoints(tempmax)
 
 temp.xy <- as.data.frame(temp.xy)
 
+head(data.all[[1]])
+
 ## extracting all temperature values
 temp.vals <- na.omit(temp.xy) 
 head(temp.vals)
 temp.pred <- data.frame(tempmax=temp.vals$BO2_tempmax_bdmin_lonlat, 
                         dec_lon_new=temp.xy$x, 
                         dec_lat_new=temp.xy$y)
-## calculating predictors
-pred <- predict(models.mean$Temp, newdata=temp.pred, re.form=~Matern(1|dec_lon_new + dec_lat_new))
+
+
+id.temp <- names(data.all)%in%c("Fucales", "Laminariales", "Other") 
+data.temp <- data.all[id.temp]
+models.temp <- models.mean.or[id.temp]
+
+
+pred <- matrix(NA, nrow=nrow(temp.pred), ncol=length(data.temp))
+for(i in 1:length(data.temp)){
+pred[,i] <- predict(models.temp[[i]]$'Temp*Ocean', newdata=temp.pred, re.form=~Matern(1|dec_lon_new + dec_lat_new))
+}
 ## data frame with all cell values
 temp.xy$pred <- NA
 temp.xy$pred[!is.na(temp.xy$BO2_tempmax_bdmin_lonlat)] <- pred
 
 head(temp.xy)
+}
+
 
 ## create raster from predictors 
 raster.predict <- CreateRaster(long=temp.xy$x, 
@@ -300,6 +321,13 @@ raster.predict <- CreateRaster(long=temp.xy$x,
                                filename = "phlorotannin_predict")
 
 #### 6. Making plots ####
+
+### default plot from package
+
+filled.mapMM(models.temp[[1]]$`Temp*Ocean`, add.map = TRUE)
+
+
+
 
 ### 6.2 making plot
 
