@@ -1,11 +1,12 @@
 ---
-title: "Global effect of temperature on the concentration of secondary compounds from brown seaweeds"
+title: Global effect of temperature on the concentration of secondary compounds from
+  brown seaweeds
 author: ''
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
-  html_document: default
-  pdf_document: default
-  word_document: default
+  html_document:
+    df_print: paged
+always_allow_html: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -21,7 +22,7 @@ Understanding brown seaweed macroecological patterns is a challenge. Many macroe
 
 General patterns of brown seaweeds are also driven by the effect of herbivores. As a protection against grazing, brown seaweeds produce chemical defenses such as phenolic compounds. Because of the global pattern of distribution of brown seaweeds, higher concentrations of phenolic compounds are also expected to be found at higher latitudes (Steinberg and Paul 1990; Steinberg et al. 1991). At local scales, environmental gradients of salinity and photosynthetically active radiation are important components driving the pattern of phenolic compounds produced by brown seaweed (Hess et al. 2017). Although there are global predictions for patterns of phenolic compounds produced by seaweed, to our knowledge this is the fist study that aimed to describe patterns of phenolic compounds concentration at a global scale. 
 
-The goal of our study is to understand global patterns of phenolic compounds produced by brown seaweeds. Because of phenolic patterns can be affect by multiple factors, such as temperature from a biogeographical viewpoint or salinity and radiation from a environmental gradient viewpoint, we present three distinct hypotheses. Our first hypothesis is that because of biogeograhic processes affecting seaweed distribution, concentration of phenolic compounds if negatively related to sea temperature. Given that environmental gradients can affect the concentration of phenolic compounds, our second hypothesis is that concentration of phenolic compounds is related to environmental gradients of salinity and photossyntetically active radiation. Finally, we hypothesize that concentration of phenolic compounds can be affected by both temperature and local environmental gradients of salinity and photossyntetically active radiation.
+The goal of our study is to understand global patterns of phenolic compounds produced by brown seaweeds. Because of phenolic patterns can be affect by multiple factors, such as temperature from a biogeographical viewpoint or salinity and radiation from a environmental gradient viewpoint, we present three distinct hypotheses. Our first hypothesis is that because of biogeograhic processes affecting seaweed distribution, concentration of phenolic compounds if negatively related to sea temperature. Given that environmental gradients can affect the concentration of phenolic compounds, our second hypothesis is that concentration of phenolic compounds is related to environmental gradients of salinity and photossyntetically active radiation. Finally, we hypothesize that concentration of phenolic compounds can be affected by both temperature and local environmental gradients of salinity and photossyntetically active radiation. This study reviews published data of phlorotannin concentration produced by brown seaweed at different localities across the globe. We used the data to built different statistical models representing each hypothesis and compared simoutenously all hypotheses by using model selection. With that, we expect to shed light on general patterns of phenolic coumpounds produced by brown seaweed and its underlying mechanisms. 
 
 
 ## Methods
@@ -30,56 +31,79 @@ The goal of our study is to understand global patterns of phenolic compounds pro
 
 We collected data from peer reviewed articles that evaluated phlorotannin concentration produced by different species of brown algae [How was the article search? Systematic search based on specific terms? All articles that quantified phlorotannin concentration?]. We considered each observation as the mean concentration and the coefficient of variation of phlorotannin produced by a particular species. From 68 references from 1986 to 2015 we evaluated a total of 527 studies (Table S1). From each study, we extracted values of mean phlorotannin concentration, brown seaweed species and geographic coordinates. We found data from 191 species belonging to the following orders: Fucales (N=249), Laminariales (N=161), Dictyotales (N=92), Desmarestiales (N=14), Ectocarpales (N=7), Ascoseirales (N=1), Raffsiales (N=1), Shaceraliales (N=1), Sporochnales (N=1). Because of differences in the evolutive history among major groups of brown seaweeds, we performed the analysis grouping species by Order. Orders with less than 10 species were grouped to guarantee a reasonable sample size to fit the models.   
 
-In order to understand variables affecting phlototannin concentration, we used both the mean and the coefficient of variation (CV) of phlonotannin concentration produced by a species as response variables. Given that brown algae occur predominantly at cooler seas and extreme temperatures should be determinant for its occurrence we chose to represent the variable temperature by maximum and range temperature at minimum depth for the mean and CV of phlorotannin concentration, respectively. Therefore, at each study locality we extracted from Bio-Oracle (Tyberghein et al. 2012, Assis et al. 2017) the following variables: sea water maximum temperature at minimum depth, sea water range temperature at minimum depth, salinity and photossyntetically active radiation (PAR).     
+In order to understand variables affecting phlototannin concentration, we used both the mean of phlonotannin concentration produced by a species as response variable. Given that brown algae occur predominantly at cooler seas and extreme temperatures should be determinant for its occurrence we chose to represent the variable temperature by maximum. Therefore, at each study locality we extracted from Bio-Oracle (Tyberghein et al. 2012, Assis et al. 2017) the following variables: sea water maximum temperature at minimum depth, salinity and photossyntetically active radiation (PAR).     
 
 ### Statistical analysis
 
 We used linear mixed models (LMMs) with spatial autocorrelated random effects to examine the effects of different combinations of variables on concentration of phlorotannin recorded at each site. In order to account for spatial autocorrelated random effects we used the procedure proposed by Rousset and Ferdy 2014 which estimates model parameters based on Laplace approximations for the likelihood with a Matérn model (Stein 1999) for spatial correlation. Our three hypotheses and a null hypothesis were represented by different sets of models (Table 1). The hypothesis that phlorotannin concentration is affected by biogeographical processes was represented by three models: one with temperature, one with ocean region and another one with the additive effect of  temperature and ocean region. We added ocean region to account for differences in the response in different biogeographical regions that could occur besides the effect of temperature. The hypothesis that phlorotannin concentration is affected by environmental gradients of salinity and PAR was represented by one additive model with the two variables. The hypothesis that phlototannin concentration is affected by both biogegraphical and environmental gradient effects was represented by three models in which we combined all biogeographical models with the the environmental gradient model. 
 
 ```{r, echo=FALSE}
-hypo <- c(rep("Biogeographical hypothesis", 3), 
+hypo <- c(rep("Biogeographical hypothesis", 2), 
           "Environmental gradient hypothesis", 
-          rep("Biogegraphical and environmental gradient hypothesis", 3), 
+          rep("Biogegraphical and environmental gradient hypothesis", 2), 
           "Null hypothesis")
-models <- c("~ Temperature + Ocean", "~ Temperature", "~ Ocean", "~ Salinity + PAR", 
-            "~ Temperature + Ocean + Salinity + PAR", 
-            "~ Temperature + Salinity + PAR", 
+models <- c("~ Temperature * Ocean", "~ Ocean", "~ Salinity + PAR", 
+            "~ Temperature * Ocean + Salinity + PAR", 
             "~ Ocean + Salinity + PAR", 
             "~ 1 ") 
 table1 <- data.frame(Hypotheses=hypo, Models=models)
-caption1 <- "Table 1. Hypotheses and models representing each hypotheses."  
+caption1 <- "Table 1. Hypotheses and models representing each hypotheses. All models retained species and study identities as random effects as well as the Matern model for spatial autocorrelation."  
 knitr::kable(table1, caption=caption1) %>%
   kable_styling(full_width = F) %>%
   #column_spec(1, bold = T) %>%
   collapse_rows(columns = 1, valign = "top")
+# write.table(table1, "../results/table1.csv", sep=",", 
+#             col.names=TRUE, row.names=FALSE)
 ```
 
 
-We followed the protocol of Zuur et al. (2009) to construct and test LMMs fitted to nested and hierarchical data (i.e.replicates distributed over species and publications). First, we built six LMMs using combinations of random variables and selected the model with the best random effects structure. For the selection of the random structure we used all fixed effects and all observations together. We then used this selected random effects structure to identify the best set of fixed effects predictors. We analyzed the response of two response variables: the mean value and CV of phlorotannin concentration. We assumed the error structure of the response variables to be Gamma distributed. We then fit all models representing each hypothesis (Table 1) to each group of species separetely. Because not all studies allowed the calculation of CV, we only fit the models for CV for species belonging to Fucales and Laminariales groups. 
+We followed the protocol of Zuur et al. (2009) to construct and test LMMs fitted to nested and hierarchical data (i.e.replicates distributed over species and publications). We assumed the error structure of the response variables to be Gamma distributed. We then fit all models representing each hypothesis (Table 1) to each group of species separetely.
 
-All models were compared using Akaike’s information criterion (AIC), which identifies the model that is best supported by the data (Burnham and Anderson 2002). We also calculated Akaike evidence weights (wi). The best-supported models were inspected and validated by residuals analysis, which did not reveal any significant departure from model assumptions (Figure S1). All analyses were performed using R software (R Core Team 2018), with models fitted using fitme function from spaMM package (Rousset and Ferdy 2014). We calculated predicted values from models using predict.HLfit from spaMM package to take into account spatial random effects. We calculated predicted values for all temperature values across the globe assuming spatial random effects based on a correlation matrix between new locations and locations in the original fit for each group of species. We combined all raster files of predicted values of phlorotannin concentration to get a general prediction.   
+All models were compared using Akaike’s information criterion (AIC), which identifies the model that is best supported by the data (Burnham and Anderson 2002). We also calculated Akaike evidence weights (wi). The best-supported models were inspected and validated by residuals analysis, which did not reveal any significant departure from model assumptions (Figure S1). All analyses were performed using R software (R Core Team 2018), with models fitted using fitme function from spaMM package (Rousset and Ferdy 2014). We calculated predicted values from models using predict.HLfit from spaMM package to take into account spatial random effects. We calculated predicted values for all temperature values across the globe assuming spatial random effects based on a correlation matrix between new locations and locations in the original fit for each group of species.
 
 ## Results
 
-We found that phlorotannin concentration is negatively affected by maximum temperature. Best model retained only temperature as a fixed effect (Table 1, Figure 1).
-
-
-```{r, echo=FALSE}
-aic_tab <- read.csv("../results/aic_tab.csv")
-knitr::kable(aic_tab, caption = "Table 1. Model selection results for fixed effects of temperature (Temp), oceanic region (Ocean), and their interaction (Temp:Ocean) based on the random effect structure: random intercept effect of species and random intercept effect of study author. Models were ranked based on differences in Akaike’s information criterion (AIC). k is the number of parameters in the model and w is the Akaike weight of each model.", 
-             col.names = c("Model", "$\\Delta$AIC", "k", "w", "AIC"))
-```
+Florotannin concentration presented a small difference among groups (Figure 1). Desmarestiales and Fucales presented higher mean values of phlorotannin concentration. Group with small orders such as Ectocarpales, Ascoseirales, Raffsiales, Shaceraliales and Sporochnales (Other, N=11) presented lower values of phlorotannin concentration.
 
 <center>
-![Figure 1. Effect of temperature on phlorotannin concentration.](../results/temp_vs_phlor.png){width=60%}
+![Figure 1. Concentration of phlorotannin per group of brown algae.](../results/concentration_vs_order.png){width=50%}
 </center>
 
 
-![Figure 2. Prediction of phlorotannin concentration at a global scale.](../results/predicted_map.png)
+We found that phlorotannin concentration is negatively affected by maximum temperature mediated by oceanic region only for Fucales, Laminariales and Other groups. For these groups, best model retained the interaction between temperature and oceanic region as fixed effect (Table 2). For Dictyiotales and Desmerestialies we found no effect of temperature, with Dictyiotales being affected only by oceanic region. 
 
-```{r}
+
+```{r, echo=FALSE}
+aic_tab <- read.csv("../results/all_aic.csv")
+knitr::kable(aic_tab, caption = "Table 1. Model selection results for fixed effects of temperature (Temp), oceanic region (Ocean), their interaction (Temp*Ocean), saliliny (Sal) and PAR based on the random effect structure: random intercept effect of species and random intercept effect of study author. Models were ranked based on differences in Akaike’s information criterion (AIC). k is the number of parameters in the model and w is the Akaike weight of each model.", 
+             col.names = c("Group", "Model", "$\\Delta$AIC", "k", "w", "AIC"), 
+             digits=c(NA, NA, 2, 0, 2,2,2)) %>%
+  kable_styling(full_width = F) %>%
+  row_spec(seq(1, nrow(aic_tab), by=6), bold = T) %>%
+  collapse_rows(columns = 1, valign = "top")
+```
+
+
+
+![Figure 2. Prediction of phlorotannin concentration at a global scale for Fucales.](../results/map01.png)
+
+![Figure 3. Prediction of phlorotannin concentration at a global scale for Fucales.](../results/map02.png)
+
+![Figure 4. Prediction of phlorotannin concentration at a global scale for Fucales.](../results/map03.png)
+
+```{r, echo=FALSE}
 stable1 <- read.csv("../results/S_table_01.csv")
-#stable1$Scientific.name <- paste0("*", stable1$Scientific.name, "*")
-knitr::kable(stable1)
+stable1$Scientific.name <- paste0("*", stable1$Scientific.name, "*")
+knitr::kable(stable1, caption="Table S1. Data incorporated in the analysis.", 
+             digits=4) %>%
+   kable_styling(full_width = F)
+```
+
+
+```{r, echo=FALSE}
+stable2 <- read.csv("../results/S_table_02.csv")
+stable2$Scientific.name <- paste0("*", stable2$Scientific.name, "*")
+knitr::kable(stable2, caption="Table S2. List of species in each group.") %>%
+   kable_styling(full_width = F)
 ```
 

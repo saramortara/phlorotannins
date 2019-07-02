@@ -4,5 +4,8 @@
 .Ruserdata
 .docx
 .asc
+.xlsx
+.html
+.png
 # ignore dir
 \tif

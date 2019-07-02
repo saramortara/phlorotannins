@@ -172,10 +172,7 @@ p_cv <- ggplot(data=data, aes(x=Order2, y=CV)) +
 
 png("../results/concentration_vs_order.png", res=300, 
     width=1400, height=1200)
-
-
-
-
+p_mean
 dev.off()
 
 ggplot(data=data, aes(x=Ocean, y=Mean)) +
@@ -238,6 +235,11 @@ all.aic.cv <- bind_rows(all.aic.cv)
 best.aic <- all.aic[all.aic$dAIC<2,]
 best.aic.cv <- all.aic.cv[all.aic.cv$dAIC<2,]
 
+all.aic
+
+write.table(all.aic, "../results/all_aic.csv", sep=",",
+            col.names=TRUE, row.names=TRUE)
+
 best.aic
 best.aic.cv
 
@@ -299,19 +301,18 @@ temp.pred <- data.frame(tempmax=temp.vals$BO2_tempmax_bdmin_lonlat,
 id.temp <- names(data.all)%in%c("Fucales", "Laminariales", "Other") 
 data.temp <- data.all[id.temp]
 models.temp <- models.mean.or[id.temp]
-
+names(models.temp) <- c("Fucales", "Laminariales", "Other") 
 
 pred <- matrix(NA, nrow=nrow(temp.pred), ncol=length(data.temp))
 for(i in 1:length(data.temp)){
 pred[,i] <- predict(models.temp[[i]]$'Temp*Ocean', newdata=temp.pred, re.form=~Matern(1|dec_lon_new + dec_lat_new))
 }
+
 ## data frame with all cell values
 temp.xy$pred <- NA
 temp.xy$pred[!is.na(temp.xy$BO2_tempmax_bdmin_lonlat)] <- pred
 
 head(temp.xy)
-}
-
 
 ## create raster from predictors 
 raster.predict <- CreateRaster(long=temp.xy$x, 
@@ -322,11 +323,26 @@ raster.predict <- CreateRaster(long=temp.xy$x,
 
 #### 6. Making plots ####
 
+y_lim <- c(-90, 90)
+x_lim <- c(-180, 180)
+
 ### default plot from package
-
+png("../results/map01.png", res=300, width=2400, heigh=1200)
 filled.mapMM(models.temp[[1]]$`Temp*Ocean`, add.map = TRUE)
+dev.off()
 
+png("../results/map02.png", res=300, width=2400, heigh=1200)
+filled.mapMM(models.temp[[2]]$`Temp*Ocean`, add.map = TRUE)
+dev.off()
 
+png("../results/map03.png", res=300, width=2400, heigh=1200)
+    filled.mapMM(models.temp[[3]]$`Temp*Ocean`, add.map = TRUE)
+    dev.off()
+
+filled.mapMM(models.temp[[2]]$`Temp*Ocean`, add.map = TRUE)
+filled.mapMM(models.temp[[3]]$`Temp*Ocean`, add.map = TRUE)
+
+models.temp[[2]]$`Temp*Ocean`
 
 
 ### 6.2 making plot
@@ -383,11 +399,13 @@ summary(models.mean.all$Temp)
 
 head(data)
 
-stable <- data[,c("Ocean", "dec_lon_new", "dec_lat_new", 'species_name', "Order", "Mean", "CV", "Reference")]
+table(data$Order2)
+
+stable <- data[,c("Ocean", "dec_lon_new", "dec_lat_new", 'species_name', "Order2", "Mean", "Reference")]
 
 stable$species_name <- gsub("_", " ", stable$species_name)
 
-names(stable)[2:4] <- c("Longitude", "Latitude", "Scientific name")
+names(stable)[2:5] <- c("Longitude", "Latitude", "Scientific name", "Order")
 
 head(stable)
 dim(stable)
@@ -395,3 +413,28 @@ dim(stable)
 write.table(stable, "../results/S_table_01.csv", sep=",", 
             col.names = TRUE, 
             row.names=FALSE)
+
+#### exporting S2 table
+
+head(data)
+
+stable2 <- stable[!duplicated(stable[,c("Order", "Scientific name")]),
+       c("Order", "Scientific name") ]
+
+stable2 <- stable2[order(stable2$Order, stable2$`Scientific name`),]
+
+write.table(stable2, "../results/S_table_02.csv", sep=",", 
+            col.names = TRUE, 
+            row.names=FALSE)
+
+#### exporting to excell
+library(xlsx)
+
+write.xlsx(stable, "../results/S_table_01.xlsx", sheetName = "Sheet1", 
+           col.names = TRUE, row.names = FALSE, append = FALSE)
+
+write.xlsx(stable2, "../results/S_table_02.xlsx", sheetName = "Sheet1", 
+           col.names = TRUE, row.names = FALSE, append = FALSE)
+
+write.xlsx(all.aic, "../results/all_aic.xlsx", sheetName = "Sheet1", 
+           col.names = TRUE, row.names = FALSE, append = FALSE)
